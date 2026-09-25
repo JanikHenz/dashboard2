@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.github
+.playwright-mcp
+.tmp-screens
+*.tsbuildinfo
+Dockerfile
+Readme.md
+docs

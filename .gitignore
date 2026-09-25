@@ -1,2 +1,9 @@
 node_modules/
+dist/
+*.tsbuildinfo
 .DS_Store
+
+# Artefakte aus Browser-Tests und Screenshots
+.playwright-mcp/
+.tmp-screens/
+/*.png

@@ -26,4 +26,4 @@ jobs:
           context: .
           push: true
           platforms: linux/arm64
-          tags: ghcr.io/janikhenz/dashboard:latest
+          tags: ghcr.io/janikhenz/dashboard2:latest

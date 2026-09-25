@@ -1,95 +1,35 @@
 <!DOCTYPE html>
 <html lang="de">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>App-Details</title>
-  <link rel="icon" type="image/png" href="/img/dashboard.png">
-  <link href="css/style.css" rel="stylesheet">
-  <link href="css/apps.css" rel="stylesheet">
-  <script type="module" src="js/app-detail.js"></script>
-</head>
-
-<body class="app-detail-page">
-  <main class="app-detail__main">
-    <header class="app-detail__header">
-      <a class="app-detail__back" id="detail-back-link" href="#">Zurueck zu den Apps</a>
-      <div class="app-detail__titles">
-        <h1 id="detail-page-title">App-Details</h1>
-        <p class="app-detail__sub" id="detail-page-sub"></p>
-      </div>
-    </header>
-
-    <div class="app-detail__body">
-      <div class="app-detail__controls-column">
-        <section class="app-detail__nodes" aria-labelledby="detail-nodes-heading">
-          <h2 id="detail-nodes-heading" class="app-detail__nodes-title">Pods &amp; Nodes</h2>
-          <ul class="app-detail__nodes-list" id="detail-nodes-list"></ul>
-          <p class="app-detail__nodes-empty" id="detail-nodes-empty" hidden>Keine Pod-Daten.</p>
-        </section>
-        <div class="app-detail__controls-stack">
-          <div class="replica-control">
-        <span class="screw screw--top-left screw--tilt"></span>
-        <span class="screw screw--top-right"></span>
-        <span class="screw screw--bottom-left"></span>
-        <span class="screw screw--bottom-right screw--tilt"></span>
-        <h2 id="detail-cpu-title">CPU</h2>
-        <div class="app-name" id="detail-cpu-meta"></div>
-        <div class="replica-info">
-          <span class="replica-count" id="detail-cpu-count">— / —</span>
-          <span class="replica-label" id="detail-cpu-label">req / limit</span>
-        </div>
-        <div class="replica-slider">
-          <input type="range" min="50" max="8000" step="50" value="250" id="detail-cpu-slider" class="slider" disabled>
-          <span class="slider-value" id="detail-cpu-slider-value">250m</span>
-        </div>
-      </div>
-
-      <div class="replica-control">
-        <span class="screw screw--top-left"></span>
-        <span class="screw screw--top-right screw--tilt"></span>
-        <span class="screw screw--bottom-left screw--tilt"></span>
-        <span class="screw screw--bottom-right"></span>
-        <h2 id="detail-memory-title">Memory</h2>
-        <div class="app-name" id="detail-memory-meta"></div>
-        <div class="replica-info">
-          <span class="replica-count" id="detail-memory-count">— / —</span>
-          <span class="replica-label" id="detail-memory-label">req / limit</span>
-        </div>
-        <div class="replica-slider">
-          <input type="range" min="64" max="16384" step="64" value="256" id="detail-memory-slider" class="slider" disabled>
-          <span class="slider-value" id="detail-memory-slider-value">256Mi</span>
-        </div>
-      </div>
-
-      <div class="replica-control">
-        <span class="screw screw--top-left"></span>
-        <span class="screw screw--top-right"></span>
-        <span class="screw screw--bottom-left"></span>
-        <span class="screw screw--bottom-right screw--tilt"></span>
-        <h2 id="detail-replica-title">Replicas</h2>
-        <div class="app-name" id="detail-replica-meta"></div>
-        <div class="replica-info">
-          <span class="replica-count" id="detail-replica-count">-/-</span>
-          <span class="replica-label" id="detail-replica-label">bereit / gesamt</span>
-        </div>
-        <div class="replica-slider">
-          <input type="range" min="0" max="12" step="1" value="1" id="detail-replica-slider" class="slider" disabled>
-          <span class="slider-value" id="detail-replica-slider-value">1</span>
-        </div>
-      </div>
-        </div>
-      </div>
-      <section class="app-detail__logs" aria-labelledby="detail-logs-heading">
-        <div class="app-detail__logs-head">
-          <h2 id="detail-logs-heading" class="app-detail__logs-title">Pod-Logs</h2>
-          <button type="button" class="app-detail__logs-refresh" id="detail-logs-refresh">Aktualisieren</button>
-        </div>
-        <div class="app-detail__logs-panels" id="detail-logs-panels"></div>
-      </section>
-    </div>
-  </main>
-</body>
-
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#e9e9e6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0e0d" media="(prefers-color-scheme: dark)" />
+    <title>App-Details · Rack</title>
+    <link rel="icon" type="image/png" href="/img/dashboard.png" />
+    <script>
+      (function () {
+        try {
+          if (sessionStorage.getItem('dashboard-fingerprint-detail-unlock') !== '1') {
+            location.replace('/');
+            return;
+          }
+        } catch (e) {
+          location.replace('/');
+          return;
+        }
+        var theme = 'light';
+        try {
+          var stored = localStorage.getItem('theme');
+          if (stored === 'dark' || stored === 'light') theme = stored;
+          else if (matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+        } catch (e) {}
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/detail/main.tsx"></script>
+  </body>
 </html>

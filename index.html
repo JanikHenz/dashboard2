@@ -1,196 +1,26 @@
 <!DOCTYPE html>
 <html lang="de">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard</title>
-  <link rel="icon" type="image/png" href="/img/dashboard.png">
-  <link href="css/style.css" rel="stylesheet">
-  <link href="css/monitoring.css" rel="stylesheet">
-  <link href="css/timer.css" rel="stylesheet">
-  <link href="css/mode.css" rel="stylesheet">
-  <link href="css/power.css" rel="stylesheet">
-  <link href="css/apps.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <script type="module" src="js/script.js"></script>
-</head>
-
-<body>
-
-  <div class="shell" id="app-shell">
-    <div class="content">
-
-      <header>
-        <div class="shadow">
-          <div class="border">
-            <div class="header">
-              <span class="screw screw--top-left" ></span>
-              <span class="screw screw--top-right screw--tilt" ></span>
-              <div class="header-left">
-                <div class="timer">
-                  <div class="segment" data-timer-segment></div>
-                </div>
-              </div>
-              <div class="header-center">
-                <div class="power">
-                  <button class="power-btn">
-                    <div class="power-icon"></div>
-                  </button>
-                </div>
-              </div>
-              <div class="header-right">
-                <div class="pwr-status">
-                  <span class="pwr-label">Power</span>
-                  <div class="pwr-led"></div>
-                </div>
-                <div class="mode" id="theme-toggle">
-                  <div class="sign">
-                    <div class="icon-sun">☀️</div>
-                    <div class="icon-moon">🌙</div>
-                    <div class="theme-knob">
-                      <div class="knob-pointer">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main>
-        <div class="apps-layout">
-          <div class="apps">
-            <span class="screw screw--top-left" ></span>
-            <span class="screw screw--top-right screw--tilt" ></span>
-            <span class="screw screw--bottom-left screw--tilt" ></span>
-            <span class="screw screw--bottom-right" ></span>
-            <div class="apps-inner" id="app-grid">
-            </div>
-          </div>
-        </div>
-
-        <button class="hint">
-          <h2>BORING STUFF</h2>
-          <div class="arrow"></div>
-        </button>
-      </main>
-    </div>
-
-    <div class="content">
-      <header id="monitoring-header">
-        <span class="screw screw--top-left" ></span>
-        <span class="screw screw--top-right screw--tilt" ></span>
-        <span class="screw screw--bottom-left screw--tilt" ></span>
-        <span class="screw screw--bottom-right" ></span>
-        <div class="monitoring-panel">
-          <div class="monitoring-stats">
-            <div class="monitor-stat" id="monitor-stat-cpu">
-              <span class="monitor-stat-label">CPU</span>
-              <strong class="monitor-stat-value" id="monitor-stat-cpu-value">--</strong>
-            </div>
-            <div class="monitor-stat" id="monitor-stat-memory">
-              <span class="monitor-stat-label">RAM</span>
-              <strong class="monitor-stat-value" id="monitor-stat-memory-value">--</strong>
-            </div>
-            <div class="monitor-stat" id="monitor-stat-gpu">
-              <span class="monitor-stat-label">GPU</span>
-              <strong class="monitor-stat-value" id="monitor-stat-gpu-value">--</strong>
-            </div>
-            <div class="monitor-stat" id="monitor-stat-gpuTemp">
-              <span class="monitor-stat-label">GPU TEMP</span>
-              <strong class="monitor-stat-value" id="monitor-stat-gpuTemp-value">--</strong>
-            </div>
-            <div class="monitor-stat" id="monitor-stat-diskUsage">
-              <span class="monitor-stat-label">DISK</span>
-              <strong class="monitor-stat-value" id="monitor-stat-diskUsage-value">--</strong>
-            </div>
-            <div class="monitor-stat" id="monitor-stat-networkRx">
-              <span class="monitor-stat-label">NETWORK</span>
-              <strong class="monitor-stat-value" id="monitor-stat-networkRx-value">--</strong>
-            </div>
-            <div class="monitor-stat" id="monitor-stat-nodesUp">
-              <span class="monitor-stat-label">NODES</span>
-              <strong class="monitor-stat-value" id="monitor-stat-nodesUp-value">--</strong>
-            </div>
-          </div>
-          <div class="gauge-space">
-            <div class="gauge" id="cpu-gauge">
-              <div class="gauge-ticks" ></div>
-              <div class="gauge-ticks gauge-ticks-major" ></div>
-              <div class="gauge-needle-wrap" >
-                <div class="gauge-needle"></div>
-              </div>
-              <div class="gauge-center-cap" ></div>
-              <span class="gauge-value" id="cpu-gauge-value">--%</span>
-              <span class="gauge-label">CPU</span>
-            </div>
-          </div>
-          <div class="fingerprint-scan-space">
-            <button type="button" class="scan" aria-label="Fingerabdruck-Sensor">
-              <div class="fingerprint">
-              </div>
-            </button>
-            <dialog class="fingerprint-scan-dialog" aria-labelledby="fingerprint-scan-dialog-title">
-              <form class="fingerprint-scan-dialog__form" id="fingerprint-scan-auth-form">
-                <h2 id="fingerprint-scan-dialog-title" class="fingerprint-scan-dialog__title">Spass-Zugang</h2>
-                <p class="fingerprint-scan-dialog__hint">Scan durch. Passwort eingeben (nur lokal im Browser).</p>
-                <label class="fingerprint-scan-dialog__label">
-                  Passwort
-                  <input
-                    class="fingerprint-scan-dialog__input"
-                    type="password"
-                    name="password"
-                    autocomplete="off"
-                    maxlength="64"
-                  >
-                </label>
-                <p class="fingerprint-scan-dialog__feedback" id="fingerprint-scan-dialog-feedback" hidden role="status"></p>
-                <div class="fingerprint-scan-dialog__actions">
-                  <button type="submit" class="fingerprint-scan-dialog__btn fingerprint-scan-dialog__btn--primary">Pruefen</button>
-                  <button type="button" class="fingerprint-scan-dialog__btn" id="fingerprint-scan-dialog-close">Schliessen</button>
-                </div>
-              </form>
-            </dialog>
-          </div>
-          <div class="safety-switch-space">
-            <div class="safety-switch">
-              <div class="safety-switch-panel">
-                <label class="safety-switch-toggle">
-                  <input class="safety-switch-input" type="checkbox" disabled>
-                  <span class="safety-switch-slot" >
-                    <span class="safety-switch-lever"></span>
-                  </span>
-                </label>
-              </div>
-              <button type="button" class="safety-switch-cover" >
-
-                <div class="attention-icon"></div>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-      <main>
-        <div class="apps" id="charts">
-          <span class="screw screw--top-left screw--tilt" ></span>
-          <span class="screw screw--top-right"></span>
-          <span class="screw screw--bottom-left" ></span>
-          <span class="screw screw--bottom-right screw--tilt" ></span>
-          <div class="chart" id="chart-cpu"></div>
-          <div class="chart" id="chart-memory"></div>
-          <div class="chart" id="chart-network"></div>
-          <div class="chart" id="chart-power"></div>
-        </div>
-        <button class="hint back-hint">
-          <div class="arrow arrow-up"></div>
-          <h2>BACK TO APPS</h2>
-        </button>
-      </main>
-    </div>
-  </div>
-</body>
-
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#e9e9e6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0e0d" media="(prefers-color-scheme: dark)" />
+    <title>Rack · Homelab</title>
+    <link rel="icon" type="image/png" href="/img/dashboard.png" />
+    <script>
+      (function () {
+        var theme = 'light';
+        try {
+          var stored = localStorage.getItem('theme');
+          if (stored === 'dark' || stored === 'light') theme = stored;
+          else if (matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+        } catch (e) {}
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/dashboard/main.tsx"></script>
+  </body>
 </html>

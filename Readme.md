@@ -1,195 +1,166 @@
-# Dashboard
+# Rack · Homelab-Dashboard
 
-Selbst gehostete Web-Oberfläche für ein Homelab-Dashboard mit Fokus auf drei Bereiche:
+Selbst gehostete Weboberfläche für ein Homelab. Sie sieht aus wie ein Messgerät aus Aluminium und bündelt drei Bereiche.
 
-- **Power & Status** (PC online/offline, Uptime, Power-Button)
-- **Monitoring** (Kennzahlen im Header, CPU-Gauge, Fingerabdruck-Scan-Deko, Safety-Switch, Zeitreihen-Charts aus Prometheus)
-- **Apps / Kubernetes** (Service-Karten in voller Breite, **Detailseite** pro Deployment mit CPU-, Memory- und Replica-Steuerung, Pod-Logs, Zugriff nur nach Fingerabdruck-Passwort)
+- **Power und Status** mit LED, Uptime im 7-Segment-Stil und Power-Knopf
+- **System** mit Kennzahlen, CPU-Gauge, Fingerabdruck-Scanner, Sicherheitsschalter für den Hard-Shutdown und vier Zeitreihen aus Prometheus
+- **Apps** aus Kubernetes als Module, dazu eine Detailseite pro Deployment mit Fadern für CPU, Memory und Replicas sowie den Pod-Logs
 
-Frontend: **HTML, CSS und JavaScript** ohne Framework und ohne Build-Schritt. Backend: **Node.js** mit **Express** und **WebSockets** für Live-Updates.
+Das Frontend nutzt React 19, Tailwind CSS 4 und shadcn/ui und wird mit Vite gebaut. Das Backend ist Node.js mit Express und WebSockets für Live-Updates.
+
+![Systemansicht im Hellmodus](docs/system-light.png)
+![Apps im Dunkelmodus](docs/apps-dark.png)
+![Detailseite](docs/detail.png)
 
 ## Schnellstart
 
 ```bash
 npm install
-node js/server.js
+npm run dev:mock
 ```
 
-Standard-Port: **8080** (siehe `js/server/config.js` bzw. Umgebungsvariable `PORT`). Anschließend im Browser z. B. `http://localhost:8080` öffnen. Die App-Detailseite liegt unter derselben Basis-URL als **`/app-detail.html`** (mit Query-Parametern `namespace` und `deployment`).
+Danach im Browser `http://localhost:5173` öffnen. Der Mock-Modus erfindet Apps, Messwerte, Pods und Logs, damit das Dashboard ohne Cluster, Prometheus und Raspberry Pi läuft.
 
-## Funktionen (Kurz)
+| Befehl | Zweck |
+|--------|-------|
+| `npm run dev` | Vite mit Hot Reload plus Backend gegen die echte Infrastruktur |
+| `npm run dev:mock` | Wie `dev`, aber mit Mock-Daten |
+| `npm run build` | Typecheck und Produktionsbuild nach `dist/` |
+| `npm start` | Backend liefert `dist/` aus (Port 8080) |
+| `npm run start:mock` | Wie `start`, aber mit Mock-Daten |
+| `npm run typecheck` | Nur TypeScript prüfen |
+
+Im Dev-Modus leitet Vite `/api` und `/ws` an `API_TARGET` weiter (Default `http://localhost:8080`). Ohne vorherigen Build antwortet das Backend auf `/` mit 503 und einem Hinweis.
+
+## Funktionen
 
 | Bereich | Inhalt |
-|--------|--------|
-| **Apps** | Karten aus `apps.yml`, Status aus Kubernetes, Klick öffnet **`app-detail.html`** (nach Fingerabdruck-Freischaltung). Detailseite nutzt `GET /api/k8s/deployments`, `POST /api/k8s/scale`, `POST /api/k8s/resources`, `GET /api/k8s/pod-logs`. Auf der Startseite kein globales Replica-Panel mehr. |
-| **Monitoring** | Prometheus-Overview (CPU, RAM, GPU, Netzwerk, Disk, Nodes), vier ECharts-Zeitreihen, Header mit LCD-Kacheln, Gauge, **Fingerabdruck-Scan** (CSS-Animation, danach Dialog mit Passwortabfrage und Freischaltung der App-Detailseite per `sessionStorage`), Safety-Switch mit Abdeckung für Hard-Shutdown |
-| **Power** | LED-Status, Uptime-Timer (7-Segment), Power-Button → `GET /api/press-button` |
-| **Global** | Hell/Dunkel-Theme (`themeSwitcher.js`), Wechsel zwischen Apps- und Monitoring-Ansicht (`pageSwitcher.js`) |
+|---------|--------|
+| **Apps** | Module nach Namespace gruppiert, Statusübersicht und Filter (Taste `/`). Das Icon öffnet die App, die Leiste darunter öffnet die Detailseite. |
+| **Detailseite** | Fader für CPU-Request, Memory-Request und Replicas, Pod-Liste mit Nodes und Pod-Logs. Skalieren auf 0 fragt vorher nach. |
+| **System** | Kennzahlen mit Sparklines, CPU-Gauge, vier Zeitreihen, Fingerabdruck-Scanner und Sicherheitsschalter mit Schutzkappe |
+| **Power** | LED-Status, Uptime und Power-Knopf mit Bestätigung |
+| **Global** | Hell- und Dunkelmodus (gespeichert in `localStorage`), Wechsel zwischen Apps und System per Button oder Wischgeste, Verbindungsanzeige für den WebSocket |
 
-## Architektur
+### Fingerabdruck-Zugang
 
-### Frontend
+Die Detailseiten sind zum Spass gesperrt. Ein Klick auf eine gesperrte Detail-Leiste führt zum Scanner in der Systemansicht. Nach Scan und Passwort (`FUN_PASSWORD` in `src/dashboard/FingerprintScanner.tsx`) öffnet sich die gewählte Detailseite direkt. Die Freischaltung liegt in `sessionStorage` und wird bei jedem Laden des Dashboards zurückgesetzt. Das ist bewusst keine echte Sicherheitsfunktion.
 
-- **`index.html`**: Shell mit zwei Inhalten (Apps-Hauptansicht, Monitoring-Seite inkl. Header und Charts).
-- **`app-detail.html`**: Pro-Deployment-Ansicht (drei Replica-Controls nebeneinander im linken Drittel, Pod-Logs im rechten Bereich). Wird von Express unter `/app-detail.html` ausgeliefert.
-- **`css/style.css`**: Schrift, Paletten (`style/root.css`), Themes (`theme-light.css` / `theme-dark.css`), Layout.
-- **`css/monitoring.css`**: Monitoring-spezifische Module (Header, Gauge, Fingerabdruck-Scan, Safety-Switch, Charts, Hilfsklassen).
-- **`css/apps.css`**: Bundle für App-Karten (`apps/cards.css`), Replica-Control (`apps/replica-control.css`) und App-Detail (`apps/detail.css`).
+### Sicherheitsschalter
 
-### Farbschema (CSS)
+Die Schutzkappe klappt per Klick auf und schliesst sich nach 5 Sekunden von selbst. Erst bei offener Kappe lässt sich der Hebel umlegen. Danach folgt eine Bestätigung und erst dann geht `POST /api/hard-shutdown` raus.
 
-Jede chromatische Familie sowie **Neutral** haben **fünf physische Helligkeitsstufen** in `:root` als `--pal-{name}-1` (hell) bis `--pal-{name}-5` (dunkel), definiert in `css/style/root.css`.
+## Gestaltung
 
-Die **Verwendung** dieser Stufen hängt vom Modus ab. Semantische Rollen setzen `body` bzw. `body.dark-mode` in `css/style/theme-light.css` / `theme-dark.css`:
+Die Richtung ist ein Industriegerät im Stil von Braun und Teenage Engineering.
 
-| Stufe | Hell (`body`) | Dunkel (`body.dark-mode`) |
-|-------|----------------|---------------------------|
-| 1 | **Highlight** (`-hl`) | *unbenutzt* |
-| 2 | **Gradient 1** (`-g1`) | **Highlight** (`-hl`) |
-| 3 | **Gradient 2** (`-g2`) | **Gradient 1** (`-g1`) |
-| 4 | **Schatten** (`-sh`) | **Gradient 2** (`-g2`) |
-| 5 | *unbenutzt* | **Schatten** (`-sh`) |
+- Aluminiumgraue Fläche mit dunkler Schrift, Haarlinien und feinem Punktraster
+- Signalorange nur für Live-Zustände und die wichtigste Taste
+- Die Farben ok, warn, bad und idle stehen ausschliesslich für Zustände
+- Anzeigefenster (Uptime, Scanner, Logs, Fader-Werte) nutzen das Token `screen` und bleiben in beiden Modi dunkel
+- Überschriften in Archivo (breit geschnitten), Beschriftungen in JetBrains Mono in Grossbuchstaben
+- Diagrammflächen sind schraffiert, der aktuelle Wert ist ein oranger Punkt
 
-API pro Familie: `--hue-{neutral,blue,green,yellow,orange,red,purple}-{hl|g1|g2|sh}` verweist auf die passende `--pal-*-n` für den aktuellen Modus.
+Alle Tokens stehen in `src/styles.css` im Block `@theme inline`. Eigene Utilities sind `font-wide`, `label-micro`, `dot-grid`, `hatch` und `scrollbar-thin`. Der Dunkelmodus setzt die Klasse `dark` am `html`-Element. Ein kleines Inline-Skript in beiden HTML-Dateien setzt sie vor dem ersten Rendern, damit nichts aufblitzt. Ohne gespeicherte Wahl gilt `prefers-color-scheme`.
 
-**ECharts:** Achsen, Gitter, Tooltip und Titel lesen CSS-Variablen aus (`getComputedStyle(document.body)`). Pro Metrik gibt es `--echarts-{cpu|memory|network|power}-{line|area}` in den Theme-Dateien. Beim Theme-Wechsel ruft `monitoringPanel.reapplyTheme()` die zuletzt gültigen Daten erneut auf (zusätzlich zum Monitoring-Refresh).
+### Responsive und Barrierefreiheit
 
-### Einstieg & Client-Module
+- Unter 1024px wandert der Ansichtswechsel in eine Leiste am unteren Rand
+- Touch-Ziele sind mindestens 44px gross und Texte nie kleiner als 12px
+- Alle Bedienelemente haben einen sichtbaren Fokusring und sprechende Labels
+- Die Gauge ist ein `meter`, die Fader sind Slider mit Klartextwerten und Statusmeldungen laufen über Live-Regionen
+- Dialoge basieren auf Radix und halten den Fokus
+- `prefers-reduced-motion` schaltet Animationen ab
 
-- **`js/script.js`**: `DOMContentLoaded`, WebSocket, verbindet Panels und Helfer (`initSafetySwitch`, `initFingerprintScan`, …). Beim Laden der Startseite wird die Detail-Freischaltung per `clearDetailPageUnlock()` zurückgesetzt (erneute Passwortabfrage vor dem nächsten Besuch der Detailseite).
-- **`js/app-detail.js`**: Detailseite (Steuerung, Logs, Zurück-Link), prüft `sessionStorage`-Freischaltung.
-- **`js/client/detailAccess.js`**: Freischalt-Flag für die Detailseite (`sessionStorage`).
-- **`js/client/wsClient.js`**: WebSocket `/ws`, Reconnect, Refresh mit `scope`.
-- **`js/client/powerPanel.js`**: Power-Button, LED, Status-Anwendung.
-- **`js/client/timerMarkup.js`**: erzeugt das 7-Segment-Markup in `index.html`.
-- **`js/client/timerDisplay.js`**: 7-Segment-Uptime.
-- **`js/client/monitoringPanel.js`**: Header + ECharts aus Monitoring-Payload.
-- **`js/client/monitoring/`**: `config.js` (Chart-Liste, Header-Bindings), `header.js`, `chartOptions.js`, `style.js`.
-- **`js/client/appsPanel.js`**, **`js/client/apps/`**: Karten (`cardFactory.js`), Scale-API (`scaleApi.js`), Ressourcen-Patch (`resourceApi.js`), Hilfsfunktionen und Panel-Rendering (`replicaControl.js`).
-- **`js/client/themeSwitcher.js`**, **`js/client/pageSwitcher.js`**: Theme und Seitenwechsel.
-- **`js/client/safetySwitch.js`**: Abdeckung, Auto-Close, Hard-Shutdown-Flow (Bestätigung, `POST /api/hard-shutdown`).
-- **`js/client/fingerprintScan.js`**: Scan-Animation per Klasse `is-scanning`, Dauer aus CSS `--fingerprint-scan-duration`, anschließend `<dialog>` mit Passwortfeld (Standardpasswort im Code `fingerprintScan.js` anpassbar), bei Erfolg setzt `setDetailPageUnlocked()` das Flag für die Detailseite.
-- **`js/client/protocol.js`**: `MESSAGE_TYPES`, `SCOPES` für WebSocket-Nachrichten.
+Geprüft wurde mit 390×844, 768×1024, 1024, 1280 und 1440 Breite in beiden Farbmodi.
 
-### Backend
-
-- **`js/server.js`**: Express-App, statische Auslieferung (`/`, `/index.html`, `/app-detail.html`, `/css`, `/js`, `/img`), Services, Intervalle für WebSocket-Broadcasts.
-- **`js/server/routes/registerRoutes.js`**: REST-Endpunkte (siehe unten).
-- **`js/server/websocket.js`**, **`js/server/websocketScopes.js`**: Scope-basierte Push-Updates.
-- **`js/server/services/`**:
-  - `pcStatusService.js`: Erreichbarkeit / Uptime-Aufbereitung
-  - `prometheusService.js`: PromQL / Monitoring-Overview
-  - `appsService.js`: `apps.yml` + Kubernetes-Deployments (inkl. CPU-/Memory-Requests und Limits des ersten Containers im Status)
-  - `kubernetesService.js`: Apps- und Core-API (Deployments lesen, skalieren, Requests des ersten Containers patchen, Pod-Logs über Deployment-`matchLabels`)
-  - `powerService.js`: Power-Button und Hard-Shutdown Richtung Pi/Hardware (`pigpio-client`)
-
-## Datenfluss
-
-### 1) Status (Power + Timer)
-
-1. Backend ruft periodisch `pcStatusService.getPayload()` auf.
-2. WebSocket sendet `type: "status"` an Clients.
-3. `powerPanel.applyStatus()` setzt LED und Uptime.
-
-### 2) Monitoring (Header + Charts)
-
-1. `prometheusService.getOverview()` führt PromQL aus (optional `range`, `step` per Query).
-2. WebSocket: `type: "monitoring"`.
-3. `monitoringPanel.applyPayload()` aktualisiert Header (`renderHeader`) und die vier Zeitreihen-Charts.
-4. Mapping Metrik → DOM: `js/client/monitoring/config.js` (`monitorHeaderBindings`).
-
-### 3) Apps (Karten + Detailseite)
-
-1. `appsService` liest `apps.yml` und kombiniert mit Deployment-Status (Replicas, CPU-/Memory-Werte des ersten Containers).
-2. WebSocket: `type: "appsState"`.
-3. `appsPanel.applyAppsState()` rendert nur noch die Karten (volle Breite der Apps-Fläche).
-4. **Detailseite** (`app-detail.html`) lädt per `GET /api/k8s/deployments` und `GET /api/apps` den aktuellen Stand, steuert Replicas über `POST /api/k8s/scale`, CPU-/Memory-Requests über `POST /api/k8s/resources`, Pod-Logs über `GET /api/k8s/pod-logs`. Zugriff nur wenn zuvor auf der Monitoring-Seite der Fingerabdruck-Dialog mit richtigem Passwort abgeschlossen wurde (Flag in `sessionStorage`, wird beim erneuten Laden von `index.html` gelöscht).
-
-## Konfiguration
-
-Zentrale Werte in **`js/server/config.js`** (teilweise per Umgebungsvariable überschreibbar):
-
-| Variable / Konstante | Bedeutung |
-|----------------------|-----------|
-| `PORT` | HTTP-Port (Default `8080`) |
-| `PC_IP` | Ziel für Status/Prometheus-Fallbacks |
-| `PI_IP` | Ziel für Power-/Shutdown-Steuerung |
-| `PROMETHEUS_BASE_URL` | Basis-URL Prometheus |
-| `STATUS_BROADCAST_MS` | Intervall Status-Push (Default `5000`) |
-| `MONITORING_BROADCAST_MS` | Intervall Monitoring-Push (Default `2500`) |
-| `APPS_BROADCAST_MS` | Intervall Apps-Push (Default `5000`) |
-
-Prometheus wird bei Bedarf über **Fallback-URLs** (siehe `js/server.js`) versucht.
-
-## REST-API
-
-| Methode | Pfad | Zweck |
-|---------|------|--------|
-| `GET` | `/api/status` | PC-Status / Uptime |
-| `GET` | `/api/press-button` | Power-Impuls triggern |
-| `POST` | `/api/hard-shutdown` | Hard-Shutdown (vom Safety-Switch) |
-| `GET` | `/api/monitoring/overview` | Monitoring-JSON (Query: `range`, `step`) |
-| `GET` | `/api/apps` | Liste aus `apps.yml` |
-| `GET` | `/api/k8s/deployments` | Deployment-Übersicht |
-| `POST` | `/api/k8s/scale` | Body: `namespace`, `deployment`, `replicas` |
-| `POST` | `/api/k8s/resources` | Body: `namespace`, `deployment`, optional `cpuRequest` und/oder `memoryRequest` (Kubernetes-Quantities, erster Container) |
-| `GET` | `/api/k8s/pod-logs` | Query: `namespace`, `deployment`, optional `tailLines` (max. 2000). Antwort: `{ pods: [{ name, logs, error? }], tailLines }`. Die Detailseite setzt `tailLines` fest im Client (`js/app-detail.js`, Konstante `POD_LOG_TAIL_LINES`). Für Logs braucht der Cluster-Account u. a. `get` auf `pods` und `pods/log`. |
-
-## WebSocket (`/ws`)
-
-- Nach Verbindung: Push für `status`, `monitoring`, `appsState`.
-- Regelmäßige Broadcasts pro Scope.
-- Client: `type: "refresh"` mit optionalem `scope` (`status`, `monitoring`, `apps`, `all`) — siehe `js/client/protocol.js`.
-
-## Projektstruktur (vereinfacht)
+## Projektstruktur
 
 ```text
-dashboard/
-├── Readme.md
-├── package.json
-├── apps.yml
-├── index.html
-├── app-detail.html
-├── css/
-│   ├── style.css
-│   ├── monitoring.css
-│   ├── apps.css
-│   ├── apps/           # cards, replica-control, detail
-│   ├── timer.css
-│   ├── mode.css
-│   ├── power.css
-│   ├── style/          # root, themes, layout
-│   └── monitoring/     # header, gauge, fingerprint-scan, safety-switch, charts, …
-├── img/
-└── js/
-    ├── script.js
-    ├── app-detail.js
-    ├── server.js              # HTTP/WebSocket-Einstieg
-    ├── client/
-    │   ├── wsClient.js
-    │   ├── powerPanel.js
-    │   ├── timerMarkup.js
-    │   ├── timerDisplay.js
-    │   ├── monitoringPanel.js
-    │   ├── themeSwitcher.js
-    │   ├── pageSwitcher.js
-    │   ├── appsPanel.js
-    │   ├── detailAccess.js
-    │   ├── safetySwitch.js
-    │   ├── fingerprintScan.js
-    │   ├── protocol.js
-    │   ├── apps/
-    │   └── monitoring/
-    └── server/
-        ├── config.js
-        ├── websocket.js
-        ├── websocketScopes.js
-        ├── protocol.js
-        ├── routes/registerRoutes.js
-        └── services/
+dashboard2/
+├── index.html              Einstieg Dashboard
+├── app-detail.html         Einstieg Detailseite (leitet ohne Freischaltung auf / um)
+├── vite.config.mts         Zwei Einstiege, Alias @ auf src, Dev-Proxy
+├── components.json         shadcn-Konfiguration
+├── public/img/             Icons und Bilder
+├── src/
+│   ├── styles.css          Tailwind, Tokens, Utilities, Animationen
+│   ├── components/
+│   │   ├── ui/             shadcn-Bausteine (Button, Dialog, AlertDialog, Slider, ToggleGroup, Input)
+│   │   ├── DialogProvider  Warteschlange für Bestätigungen und Hinweise
+│   │   ├── charts          LineChart und Sparkline als SVG
+│   │   └── …               Gauge, Led, UptimeDisplay, ThemeToggle, ConnectionBadge
+│   ├── lib/                Typen, API-Helfer, WebSocket-Hook, Formatierung, K8s-Zustände
+│   ├── dashboard/          DashboardApp, AppsView, SystemView, Power, Scanner, Sicherheitsschalter
+│   └── detail/             DetailApp, FaderChannel, PodList, PodLogs
+└── server/
+    ├── index.js            Express, Auslieferung von dist, WebSocket, Intervalle
+    ├── config.js
+    ├── mock.js             Mock-Services für MOCK=1
+    ├── protocol.js, websocket.js, websocketScopes.js
+    ├── routes/registerRoutes.js
+    └── services/           pcStatus, prometheus, apps, kubernetes, power
 ```
 
-Hinweis: Zum Starten **`node js/server.js`** im Projektroot verwenden.
+Die Datei `apps.yml` wird nicht mehr gelesen. Die App-Liste entsteht aus den Deployments im Cluster.
+
+## Backend
+
+### Apps aus Kubernetes
+
+`appsService` liest alle Deployments ausserhalb der System-Namespaces und sucht die URL über Ingress oder Traefik-IngressRoute. Mit Annotationen am Deployment lässt sich das übersteuern.
+
+| Annotation | Wirkung |
+|------------|---------|
+| `dashboard.pinned.dev/url` | Feste URL der App |
+| `dashboard.pinned.dev/name` | Anzeigename |
+
+Das Icon ist `public/img/icons/<deployment>.png`, wobei die Endungen `-deployment` und `-deploy` wegfallen dürfen. Deployments ohne URL erscheinen nicht.
+
+### Konfiguration
+
+| Variable | Bedeutung |
+|----------|-----------|
+| `PORT` | HTTP-Port (Default `8080`) |
+| `MOCK` | `1` oder `true` schaltet die Mock-Services ein |
+| `PC_IP` | Ziel für Status und Prometheus-Fallbacks |
+| `PI_IP` | Ziel für Power- und Shutdown-Steuerung |
+| `PROMETHEUS_BASE_URL` | Basis-URL von Prometheus |
+| `API_TARGET` | Nur für `vite` im Dev-Modus, Ziel des Proxys |
+
+Die Broadcast-Intervalle stehen in `server/config.js` (Status 5 s, Monitoring 2,5 s, Apps 5 s).
+
+### REST-API
+
+| Methode | Pfad | Zweck |
+|---------|------|-------|
+| `GET` | `/api/status` | PC-Status und Uptime |
+| `GET` | `/api/press-button` | Power-Impuls auslösen |
+| `POST` | `/api/hard-shutdown` | Hard-Shutdown über den Sicherheitsschalter |
+| `GET` | `/api/monitoring/overview` | Monitoring-JSON, Query mit `range` und `step` |
+| `GET` | `/api/apps` | App-Liste |
+| `GET` | `/api/k8s/deployments` | Deployment-Übersicht |
+| `POST` | `/api/k8s/scale` | Body mit `namespace`, `deployment` und `replicas` |
+| `POST` | `/api/k8s/resources` | Body mit `namespace`, `deployment` und optional `cpuRequest` oder `memoryRequest` für den ersten Container |
+| `GET` | `/api/k8s/pod-logs` | Query mit `namespace`, `deployment` und optional `tailLines` (max. 2000) |
+
+Die Detailseite fragt 200 Logzeilen ab und lädt alle 10 Sekunden neu. Fader speichern erst nach 500 ms Pause und springen bei einem Fehler zurück. Für die Logs braucht der Cluster-Account unter anderem `get` auf `pods` und `pods/log`.
+
+### WebSocket (`/ws`)
+
+- Nach dem Verbinden pusht der Server `status`, `monitoring` und `appsState`
+- Danach folgen regelmässige Broadcasts pro Scope
+- Der Client schickt `type: "refresh"` mit optionalem `scope` (`status`, `monitoring`, `apps`, `all`)
+- Bei Verbindungsabbruch verbindet sich der Client nach 3 Sekunden neu
+
+## Docker
+
+Das Dockerfile baut in zwei Stufen. Die erste Stufe baut das Frontend nativ auf dem Build-Rechner, die zweite enthält nur die Server-Pakete, `server/`, `public/` und `dist/`. Der GitHub-Workflow veröffentlicht das Image für `linux/arm64` unter `ghcr.io/janikhenz/dashboard2:latest`.
+
+```bash
+docker build -t dashboard .
+docker run --rm -p 8080:8080 -e MOCK=1 dashboard
+```
 
 ## Lizenz
 
