@@ -102,20 +102,20 @@ dashboard2/
     └── services/           pcStatus, prometheus, apps, kubernetes, power
 ```
 
-Die Datei `apps.yml` wird nicht mehr gelesen. Die App-Liste entsteht aus den Deployments im Cluster.
+Die Datei `apps.yml` definiert den Anwendungskatalog und liefert Metadaten (Namen, URLs, Icons). Die App-Liste wird automatisch mit den Deployments und StatefulSets im Cluster synchronisiert.
 
 ## Backend
 
 ### Apps aus Kubernetes
 
-`appsService` liest alle Deployments ausserhalb der System-Namespaces und sucht die URL über Ingress oder Traefik-IngressRoute. Mit Annotationen am Deployment lässt sich das übersteuern.
+`appsService` liest alle Workloads (Deployments und StatefulSets) ausserhalb der System-Namespaces und sucht die URL über Ingress oder Traefik-IngressRoute. Mit Annotationen am Deployment oder Einträgen in `apps.yml` lässt sich das übersteuern.
 
 | Annotation | Wirkung |
 |------------|---------|
 | `dashboard.pinned.dev/url` | Feste URL der App |
 | `dashboard.pinned.dev/name` | Anzeigename |
 
-Das Icon ist `public/img/icons/<deployment>.png`, wobei die Endungen `-deployment` und `-deploy` wegfallen dürfen. Deployments ohne URL erscheinen nicht.
+Das Icon ist `public/img/icons/<deployment>.png` (oder `.svg`), wobei die Endungen `-deployment` und `-deploy` wegfallen dürfen. Auch Deployments ohne URL (Backend-Services wie Whisper, Piper, FlareSolverr) werden im Dashboard als Service-Module aufgeführt, sodass Replicas, CPU und RAM jederzeit gesteuert werden können.
 
 ### Konfiguration
 

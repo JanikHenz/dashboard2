@@ -63,11 +63,15 @@ export const AppModule = memo(function AppModule({ app, deployment, locked, onOp
       </span>
       <span className="flex items-end justify-between gap-2">
         <span className="min-w-0 truncate text-base leading-tight font-semibold">{app.name}</span>
-        {app.url && (
+        {app.url ? (
           <ArrowUpRightIcon
             aria-hidden="true"
             className="size-4 shrink-0 text-muted-foreground transition-[color,transform] duration-200 group-hover/open:translate-x-0.5 group-hover/open:-translate-y-0.5 group-hover/open:text-signal"
           />
+        ) : (
+          <span className="label-micro shrink-0 rounded border border-border/70 bg-well px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            Service
+          </span>
         )}
       </span>
     </>
@@ -86,7 +90,14 @@ export const AppModule = memo(function AppModule({ app, deployment, locked, onOp
           {face}
         </a>
       ) : (
-        <div className="flex flex-1 flex-col p-3">{face}</div>
+        <button
+          type="button"
+          onClick={() => onOpenDetails(app)}
+          aria-label={`${app.name} Details öffnen`}
+          className="group/open flex flex-1 flex-col rounded-t-md p-3 text-left outline-offset-[-2px] transition-colors hover:bg-muted/30"
+        >
+          {face}
+        </button>
       )}
       <button
         type="button"

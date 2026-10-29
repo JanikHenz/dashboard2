@@ -8,21 +8,48 @@ const POD_START_DELAY_MS = 6000;
 const NODES = ['k3s-master', 'k3s-worker-1', 'k3s-worker-2'];
 
 const MOCK_APPS = [
-  { namespace: 'media', deployment: 'jellyfin-deployment', name: 'Jellyfin', replicas: 1 },
-  { namespace: 'media', deployment: 'plex-deployment', name: 'Plex', replicas: 1 },
-  { namespace: 'media', deployment: 'jellyseerr', name: 'Jellyseerr', replicas: 1 },
-  { namespace: 'media', deployment: 'sonarr', name: 'Sonarr', replicas: 1 },
-  { namespace: 'media', deployment: 'radarr', name: 'Radarr', replicas: 2 },
-  { namespace: 'media', deployment: 'prowlarr', name: 'Prowlarr', replicas: 1 },
-  { namespace: 'media', deployment: 'qbittorrent', name: 'qBittorrent', replicas: 0 },
-  { namespace: 'monitoring', deployment: 'grafana', name: 'Grafana', replicas: 1 },
-  { namespace: 'monitoring', deployment: 'prometheus', name: 'Prometheus', replicas: 1 },
-  { namespace: 'tools', deployment: 'nextcloud', name: 'Nextcloud', replicas: 1, failing: true },
-  { namespace: 'tools', deployment: 'vaultwarden', name: 'Vaultwarden', replicas: 1 },
-  { namespace: 'tools', deployment: 'home-assistant', name: 'Home Assistant', replicas: 1 },
-  { namespace: 'ai', deployment: 'ollama', name: 'Ollama', replicas: 1 },
-  { namespace: 'ai', deployment: 'librechat', name: 'LibreChat', replicas: 1 },
-  { namespace: 'ai', deployment: 'podinfo', name: 'Podinfo', replicas: 3 }
+  // Media Stack
+  { namespace: 'media', deployment: 'jellyfin', name: 'Jellyfin', replicas: 1, url: 'https://jellyfin.janikhenz.ch' },
+  { namespace: 'media', deployment: 'plex', name: 'Plex', replicas: 1, url: 'https://plex.janikhenz.ch' },
+  { namespace: 'media', deployment: 'jellyseerr', name: 'Jellyseerr', replicas: 1, url: 'https://jellyseerr.janikhenz.ch' },
+  { namespace: 'media', deployment: 'sonarr', name: 'Sonarr', replicas: 1, url: 'https://sonarr.janikhenz.ch' },
+  { namespace: 'media', deployment: 'radarr', name: 'Radarr', replicas: 1, url: 'https://radarr.janikhenz.ch' },
+  { namespace: 'media', deployment: 'prowlarr', name: 'Prowlarr', replicas: 1, url: 'https://prowlarr.janikhenz.ch' },
+  { namespace: 'media', deployment: 'qbittorrent', name: 'qBittorrent', replicas: 1, url: 'https://qbt.janikhenz.ch' },
+  { namespace: 'media', deployment: 'flaresolverr', name: 'FlareSolverr', replicas: 1, url: null },
+
+  // Monitoring
+  { namespace: 'monitoring', deployment: 'grafana', name: 'Grafana', replicas: 1, url: 'https://grafana.janikhenz.ch' },
+  { namespace: 'monitoring', deployment: 'prometheus', name: 'Prometheus', replicas: 1, url: 'https://prometheus.janikhenz.ch' },
+
+  // Jarvis / AI
+  { namespace: 'jarvis', deployment: 'ollama', name: 'Ollama', replicas: 1, url: 'https://ollama.janikhenz.ch' },
+  { namespace: 'jarvis', deployment: 'librechat', name: 'LibreChat', replicas: 1, url: 'https://chat.janikhenz.ch' },
+  { namespace: 'jarvis', deployment: 'whisper', name: 'Whisper', replicas: 1, url: null },
+  { namespace: 'jarvis', deployment: 'piper', name: 'Piper', replicas: 1, url: null },
+  { namespace: 'jarvis', deployment: 'chromadb', name: 'ChromaDB', replicas: 1, url: null },
+  { namespace: 'jarvis', deployment: 'librechat-mongodb', name: 'LibreChat MongoDB', replicas: 1, url: null },
+  { namespace: 'jarvis', deployment: 'librechat-meilisearch', name: 'LibreChat Meilisearch', replicas: 1, url: null },
+
+  // Vaultwarden
+  { namespace: 'vaultwarden', deployment: 'vaultwarden', name: 'Vaultwarden', replicas: 1, url: 'https://vault.janikhenz.ch' },
+
+  // Home Assistant
+  { namespace: 'home-assistant', deployment: 'home-assistant', name: 'Home Assistant', replicas: 1, url: 'https://homeassistant.janikhenz.ch' },
+
+  // Nextcloud
+  { namespace: 'nextcloud', deployment: 'nextcloud', name: 'Nextcloud', replicas: 1, url: 'https://nextcloud.janikhenz.ch' },
+
+  // Syncthing
+  { namespace: 'syncthing', deployment: 'syncthing', name: 'Syncthing', replicas: 1, url: 'https://syncthing.janikhenz.ch' },
+
+  // Gaming
+  { namespace: 'gaming', deployment: 'pterodactyl-panel', name: 'Pterodactyl Panel', replicas: 1, url: 'https://pterodactyl.janikhenz.ch' },
+  { namespace: 'gaming', deployment: 'pterodactyl-wings', name: 'Pterodactyl Wings', replicas: 1, url: 'https://wings.janikhenz.ch' },
+  { namespace: 'gaming', deployment: 'pterodactyl-mariadb', name: 'Pterodactyl MariaDB', replicas: 1, url: null },
+
+  // Default
+  { namespace: 'default', deployment: 'nginx-dashboard', name: 'Dashboard', replicas: 1, url: 'https://janikhenz.ch' }
 ];
 
 const LOG_TEMPLATES = [
@@ -109,8 +136,17 @@ function createMockServices({ iconsDir }) {
 
   function iconFor(deployment) {
     const candidates = [deployment, deployment.replace(/-deploy(ment)?$/, '')];
-    const match = candidates.find((name) => fs.existsSync(path.join(iconsDir, `${name}.png`)));
-    return match ? `/img/icons/${match}.png` : null;
+    const prefix = deployment.split('-')[0];
+    if (prefix && prefix !== deployment) candidates.push(prefix);
+
+    for (const name of candidates) {
+      for (const ext of ['png', 'svg', 'webp']) {
+        if (fs.existsSync(path.join(iconsDir, `${name}.${ext}`))) {
+          return `/img/icons/${name}.${ext}`;
+        }
+      }
+    }
+    return null;
   }
 
   function statusOf(entry) {
@@ -142,7 +178,7 @@ function createMockServices({ iconsDir }) {
     return [...deployments.values()]
       .map((entry) => ({
         name: entry.name,
-        url: `https://${entry.deployment.replace(/-deployment$/, '')}.example.com`,
+        url: entry.url !== undefined ? entry.url : null,
         icon: iconFor(entry.deployment),
         deployment: entry.deployment,
         namespace: entry.namespace

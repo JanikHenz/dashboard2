@@ -34,7 +34,11 @@ function createRealServices() {
     kubernetesService,
     prometheusService,
     pcStatusService: createPcStatusService({ pcIp: PC_IP, prometheusService }),
-    appsService: createAppsService({ iconsDir, kubernetesService }),
+    appsService: createAppsService({
+      iconsDir,
+      kubernetesService,
+      appsConfigPath: path.join(projectRoot, 'apps.yml')
+    }),
     powerService: createPowerService({ piIp: PI_IP })
   };
 }

@@ -5,6 +5,75 @@ const SYSTEM_NAMESPACES = new Set(['kube-system', 'kube-public', 'kube-node-leas
 const URL_ANNOTATION = 'dashboard.pinned.dev/url';
 const NAME_ANNOTATION = 'dashboard.pinned.dev/name';
 
+function parseSimpleYamlApps(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return new Map();
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n');
+    let currentNamespace = null;
+    let currentApp = null;
+    const map = new Map();
+
+    function parseKeyValue(str, target) {
+      const colonIdx = str.indexOf(':');
+      if (colonIdx === -1) return;
+      const key = str.slice(0, colonIdx).trim();
+      let val = str.slice(colonIdx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      } else if (val === 'null' || val === '~' || val === '') {
+        val = null;
+      }
+      target[key] = val;
+    }
+
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/#.*$/, '');
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const nsMatch = line.match(/^ {2}([a-zA-Z0-9_-]+):$/);
+      if (nsMatch) {
+        currentNamespace = nsMatch[1];
+        continue;
+      }
+
+      if (line.match(/^ {4}-\s*/)) {
+        currentApp = {};
+        const rest = line.replace(/^ {4}-\s*/, '').trim();
+        if (rest) {
+          parseKeyValue(rest, currentApp);
+        }
+        continue;
+      }
+
+      if (currentApp && line.match(/^ {6}/)) {
+        parseKeyValue(trimmed, currentApp);
+        if (currentApp.deployment && currentNamespace) {
+          map.set(deploymentKey(currentNamespace, currentApp.deployment), {
+            ...currentApp,
+            namespace: currentNamespace
+          });
+        }
+      }
+    }
+    return map;
+  } catch (err) {
+    console.error('Failed to parse apps.yml:', err.message);
+    return new Map();
+  }
+}
+
+function formatDefaultAppName(deploymentName) {
+  if (!deploymentName) return '';
+  return deploymentName
+    .replace(/-deployment$/, '')
+    .replace(/-deploy$/, '')
+    .split(/[-_]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 function extractPrimaryContainerResources(deployment) {
   const c = deployment?.spec?.template?.spec?.containers?.[0];
   const r = c?.resources;
@@ -105,13 +174,26 @@ function isHttpUrl(value) {
   }
 }
 
-function createAppsService({ iconsDir, kubernetesService }) {
+function createAppsService({ iconsDir, kubernetesService, appsConfigPath }) {
+  const configPath = appsConfigPath || path.join(path.dirname(iconsDir), '..', '..', 'apps.yml');
+  const configuredApps = parseSimpleYamlApps(configPath);
 
   function resolveIconForDeployment(deploymentName) {
     for (const baseName of iconNameCandidates(deploymentName)) {
-      const filePath = path.join(iconsDir, `${baseName}.png`);
-      if (fs.existsSync(filePath)) {
-        return `/img/icons/${baseName}.png`;
+      for (const ext of ['png', 'svg', 'webp']) {
+        const filePath = path.join(iconsDir, `${baseName}.${ext}`);
+        if (fs.existsSync(filePath)) {
+          return `/img/icons/${baseName}.${ext}`;
+        }
+      }
+    }
+    const prefix = deploymentName.split('-')[0];
+    if (prefix && prefix !== deploymentName) {
+      for (const ext of ['png', 'svg', 'webp']) {
+        const filePath = path.join(iconsDir, `${prefix}.${ext}`);
+        if (fs.existsSync(filePath)) {
+          return `/img/icons/${prefix}.${ext}`;
+        }
       }
     }
     return null;
@@ -241,18 +323,29 @@ function createAppsService({ iconsDir, kubernetesService }) {
     return resolvedUrls;
   }
 
+  function getAppMeta(namespace, deploymentName) {
+    const direct = configuredApps.get(deploymentKey(namespace, deploymentName));
+    if (direct) return direct;
+    for (const alt of iconNameCandidates(deploymentName)) {
+      const match = configuredApps.get(deploymentKey(namespace, alt));
+      if (match) return match;
+    }
+    return null;
+  }
+
   function deploymentToApp(deployment, ingressUrls) {
     const namespace = deployment?.metadata?.namespace || '';
     const deploymentName = deployment?.metadata?.name || '';
     const annotations = deployment?.metadata?.annotations || {};
     const annotationUrl = annotations[URL_ANNOTATION] || null;
     const ingressUrl = ingressUrls.get(deploymentKey(namespace, deploymentName)) || null;
-    const url = isHttpUrl(annotationUrl) ? annotationUrl : ingressUrl;
+    const meta = getAppMeta(namespace, deploymentName);
+    const url = isHttpUrl(annotationUrl) ? annotationUrl : (ingressUrl || (meta && meta.url !== undefined ? meta.url : null));
 
     return {
-      name: annotations[NAME_ANNOTATION] || deploymentName,
+      name: annotations[NAME_ANNOTATION] || meta?.name || formatDefaultAppName(deploymentName),
       url,
-      icon: resolveIconForDeployment(deploymentName),
+      icon: meta?.icon || resolveIconForDeployment(deploymentName),
       deployment: deploymentName,
       namespace
     };
@@ -268,7 +361,7 @@ function createAppsService({ iconsDir, kubernetesService }) {
   function deploymentsToApps(items, ingressUrls) {
     return items
       .map((deployment) => deploymentToApp(deployment, ingressUrls))
-      .filter((app) => app.deployment && app.url)
+      .filter((app) => Boolean(app.deployment))
       .sort((a, b) => {
         const byNamespace = a.namespace.localeCompare(b.namespace);
         if (byNamespace !== 0) return byNamespace;
@@ -278,7 +371,12 @@ function createAppsService({ iconsDir, kubernetesService }) {
 
   async function loadKubernetesAppsContext() {
     if (!kubernetesService.isAvailable()) {
-      return { apps: [], items: [] };
+      const fallbackApps = [...configuredApps.values()].sort((a, b) => {
+        const byNamespace = a.namespace.localeCompare(b.namespace);
+        if (byNamespace !== 0) return byNamespace;
+        return a.name.localeCompare(b.name);
+      });
+      return { apps: fallbackApps, items: [] };
     }
 
     const [deployments, ingresses, ingressRoutes, services] = await Promise.all([
@@ -337,7 +435,12 @@ function createAppsService({ iconsDir, kubernetesService }) {
   async function getStatePayload() {
     try {
       if (!kubernetesService.isAvailable()) {
-        return { type: 'appsState', apps: [], deployments: {}, k8sUnavailable: true };
+        const fallbackApps = [...configuredApps.values()].sort((a, b) => {
+          const byNamespace = a.namespace.localeCompare(b.namespace);
+          if (byNamespace !== 0) return byNamespace;
+          return a.name.localeCompare(b.name);
+        });
+        return { type: 'appsState', apps: fallbackApps, deployments: {}, k8sUnavailable: true };
       }
 
       const { apps, items } = await loadKubernetesAppsContext();

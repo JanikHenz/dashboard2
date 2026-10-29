@@ -13,6 +13,7 @@ WORKDIR /usr/src/app
 ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
+COPY apps.yml ./
 COPY server ./server
 COPY public ./public
 COPY --from=web /usr/src/app/dist ./dist

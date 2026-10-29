@@ -117,24 +117,45 @@ function createKubernetesService() {
 
   async function readDeployment(namespace, deployment) {
     ensureClient();
-    const response = await k8sAppsApi.readNamespacedDeployment({
-      name: deployment,
-      namespace
-    });
-    return pickK8sResource(response);
+    try {
+      const response = await k8sAppsApi.readNamespacedDeployment({
+        name: deployment,
+        namespace
+      });
+      return pickK8sResource(response);
+    } catch (err) {
+      try {
+        const stsResponse = await k8sAppsApi.readNamespacedStatefulSet({
+          name: deployment,
+          namespace
+        });
+        return pickK8sResource(stsResponse);
+      } catch (_stsErr) {
+        throw err;
+      }
+    }
   }
 
   async function scaleDeployment(namespace, deployment, replicas) {
     ensureClient();
-    const currentDeployment = await readDeployment(namespace, deployment);
-    currentDeployment.spec = currentDeployment.spec || {};
-    currentDeployment.spec.replicas = parseInt(replicas, 10);
-    await k8sAppsApi.replaceNamespacedDeployment({
-      name: deployment,
-      namespace,
-      body: currentDeployment
-    });
-    return { success: true, replicas: parseInt(replicas, 10) };
+    const count = parseInt(replicas, 10);
+    const workload = await readDeployment(namespace, deployment);
+    workload.spec = workload.spec || {};
+    workload.spec.replicas = count;
+    if (workload?.kind === 'StatefulSet') {
+      await k8sAppsApi.replaceNamespacedStatefulSet({
+        name: deployment,
+        namespace,
+        body: workload
+      });
+    } else {
+      await k8sAppsApi.replaceNamespacedDeployment({
+        name: deployment,
+        namespace,
+        body: workload
+      });
+    }
+    return { success: true, replicas: count };
   }
 
   async function updatePrimaryContainerRequests(namespace, deploymentName, { cpuRequest, memoryRequest }) {
@@ -142,7 +163,7 @@ function createKubernetesService() {
     const dep = await readDeployment(namespace, deploymentName);
     const containers = dep?.spec?.template?.spec?.containers;
     if (!Array.isArray(containers) || containers.length === 0) {
-      throw new Error('Deployment has no containers');
+      throw new Error('Workload has no containers');
     }
     const c = containers[0];
     c.resources = c.resources || {};
@@ -153,11 +174,19 @@ function createKubernetesService() {
     if (memoryRequest !== undefined && memoryRequest !== null && memoryRequest !== '') {
       c.resources.requests.memory = String(memoryRequest);
     }
-    await k8sAppsApi.replaceNamespacedDeployment({
-      name: deploymentName,
-      namespace,
-      body: dep
-    });
+    if (dep?.kind === 'StatefulSet') {
+      await k8sAppsApi.replaceNamespacedStatefulSet({
+        name: deploymentName,
+        namespace,
+        body: dep
+      });
+    } else {
+      await k8sAppsApi.replaceNamespacedDeployment({
+        name: deploymentName,
+        namespace,
+        body: dep
+      });
+    }
     return { success: true };
   }
 
@@ -232,7 +261,17 @@ function createKubernetesService() {
     ensureClient();
     const response = await k8sAppsApi.listDeploymentForAllNamespaces();
     const body = pickK8sResource(response);
-    return Array.isArray(body?.items) ? body.items : [];
+    const items = Array.isArray(body?.items) ? [...body.items] : [];
+    try {
+      const stsResponse = await k8sAppsApi.listStatefulSetForAllNamespaces();
+      const stsBody = pickK8sResource(stsResponse);
+      if (Array.isArray(stsBody?.items)) {
+        items.push(...stsBody.items);
+      }
+    } catch (_err) {
+      // Ignored if cluster role doesn't permit statefulsets
+    }
+    return items;
   }
 
   async function listAllIngresses() {

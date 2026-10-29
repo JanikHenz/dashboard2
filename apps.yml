@@ -3,12 +3,12 @@ apps:
     - name: "Jellyfin"
       url: "https://jellyfin.janikhenz.ch"
       icon: "/img/icons/jellyfin.png"
-      deployment: "jellyfin-deployment"
+      deployment: "jellyfin"
 
     - name: "Plex"
       url: "https://plex.janikhenz.ch"
       icon: "/img/icons/plex.png"
-      deployment: "plex-deployment"
+      deployment: "plex"
 
     - name: "Jellyseerr"
       url: "https://jellyseerr.janikhenz.ch"
@@ -20,18 +20,115 @@ apps:
       icon: "/img/icons/sonarr.png"
       deployment: "sonarr"
 
+    - name: "Radarr"
+      url: "https://radarr.janikhenz.ch"
+      icon: "/img/icons/radarr.png"
+      deployment: "radarr"
+
     - name: "Prowlarr"
       url: "https://prowlarr.janikhenz.ch"
       icon: "/img/icons/prowlarr.png"
       deployment: "prowlarr"
 
-    - name: "qbittorrent"
+    - name: "qBittorrent"
       url: "https://qbt.janikhenz.ch"
       icon: "/img/icons/qbittorrent.png"
       deployment: "qbittorrent"
+
+    - name: "FlareSolverr"
+      url: null
+      icon: "/img/icons/flaresolverr.png"
+      deployment: "flaresolverr"
 
   monitoring:
     - name: "Grafana"
       url: "https://grafana.janikhenz.ch"
       icon: "/img/icons/grafana.png"
       deployment: "grafana"
+
+    - name: "Prometheus"
+      url: "https://prometheus.janikhenz.ch"
+      icon: "/img/icons/prometheus.png"
+      deployment: "prometheus"
+
+  jarvis:
+    - name: "Ollama"
+      url: "https://ollama.janikhenz.ch"
+      icon: "/img/icons/ollama.png"
+      deployment: "ollama"
+
+    - name: "LibreChat"
+      url: "https://chat.janikhenz.ch"
+      icon: "/img/icons/librechat.png"
+      deployment: "librechat"
+
+    - name: "Whisper"
+      url: null
+      icon: "/img/icons/whisper.png"
+      deployment: "whisper"
+
+    - name: "Piper"
+      url: null
+      icon: "/img/icons/piper.png"
+      deployment: "piper"
+
+    - name: "ChromaDB"
+      url: null
+      icon: "/img/icons/chromadb.png"
+      deployment: "chromadb"
+
+    - name: "LibreChat MongoDB"
+      url: null
+      icon: "/img/icons/librechat.png"
+      deployment: "librechat-mongodb"
+
+    - name: "LibreChat Meilisearch"
+      url: null
+      icon: "/img/icons/librechat.png"
+      deployment: "librechat-meilisearch"
+
+  vaultwarden:
+    - name: "Vaultwarden"
+      url: "https://vault.janikhenz.ch"
+      icon: "/img/icons/vaultwarden.png"
+      deployment: "vaultwarden"
+
+  home-assistant:
+    - name: "Home Assistant"
+      url: "https://homeassistant.janikhenz.ch"
+      icon: "/img/icons/home-assistant.png"
+      deployment: "home-assistant"
+
+  nextcloud:
+    - name: "Nextcloud"
+      url: "https://nextcloud.janikhenz.ch"
+      icon: "/img/icons/nextcloud.png"
+      deployment: "nextcloud"
+
+  syncthing:
+    - name: "Syncthing"
+      url: "https://syncthing.janikhenz.ch"
+      icon: "/img/icons/syncthing.png"
+      deployment: "syncthing"
+
+  gaming:
+    - name: "Pterodactyl Panel"
+      url: "https://pterodactyl.janikhenz.ch"
+      icon: "/img/icons/pterodactyl-panel.png"
+      deployment: "pterodactyl-panel"
+
+    - name: "Pterodactyl Wings"
+      url: "https://wings.janikhenz.ch"
+      icon: "/img/icons/pterodactyl-panel.png"
+      deployment: "pterodactyl-wings"
+
+    - name: "Pterodactyl MariaDB"
+      url: null
+      icon: "/img/icons/pterodactyl-panel.png"
+      deployment: "pterodactyl-mariadb"
+
+  default:
+    - name: "Dashboard"
+      url: "https://janikhenz.ch"
+      icon: "/img/icons/nginx-dashboard.png"
+      deployment: "nginx-dashboard"
