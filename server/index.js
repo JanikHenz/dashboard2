@@ -4,6 +4,8 @@ const http = require('http');
 const path = require('path');
 const {
   PORT,
+  projectRoot,
+  appsConfigPath,
   distDir,
   iconsDir,
   MOCK,
@@ -37,7 +39,7 @@ function createRealServices() {
     appsService: createAppsService({
       iconsDir,
       kubernetesService,
-      appsConfigPath: path.join(projectRoot, 'apps.yml')
+      appsConfigPath
     }),
     powerService: createPowerService({ piIp: PI_IP })
   };

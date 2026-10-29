@@ -5,6 +5,7 @@ const projectRoot = path.join(__dirname, '..');
 module.exports = {
   PORT: process.env.PORT || 8080,
   projectRoot,
+  appsConfigPath: path.join(projectRoot, 'apps.yml'),
   distDir: path.join(projectRoot, 'dist'),
   iconsDir: path.join(projectRoot, 'public', 'img', 'icons'),
   MOCK: process.env.MOCK === '1' || process.env.MOCK === 'true',
